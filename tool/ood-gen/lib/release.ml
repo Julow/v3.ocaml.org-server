@@ -31,6 +31,8 @@ type t = {
   highlights_html : string;
   body_md : string;
   body_html : string;
+  manual_version : string;
+  manual_data_path : string option;
 }
 
 let all () =
@@ -40,6 +42,12 @@ let all () =
       let metadata =
         try Utils.decode_or_raise metadata_of_yaml metadata
         with _ -> failwith content
+      in
+      let manual_version = String.sub metadata.version 0 4 in
+      let manual_data_path =
+        let path = "manual/" ^ manual_version in
+        if Option.is_some (Data.read (path ^ "/index.html")) then Some path
+        else None
       in
       {
         kind = kind_of_string metadata.kind;
@@ -53,6 +61,8 @@ let all () =
           |> Hilite.Md.transform |> Omd.to_html;
         body_md = body;
         body_html = Omd.of_string body |> Hilite.Md.transform |> Omd.to_html;
+        manual_version;
+        manual_data_path;
       })
     "releases/"
   |> List.sort (fun a b -> String.compare a.date b.date)
@@ -72,10 +82,13 @@ let pp ppf v =
   ; highlights_html = %a
   ; body_md = %a
   ; body_html = %a
+  ; manual_version = %a
+  ; manual_data_path = %a
   }|}
     pp_kind v.kind Pp.string v.version Pp.string v.date Pp.string v.intro_md
     Pp.string v.intro_html Pp.string v.highlights_md Pp.string v.highlights_html
-    Pp.string v.body_md Pp.string v.body_html
+    Pp.string v.body_md Pp.string v.body_html Pp.string v.manual_version
+    (Pp.option Pp.string) v.manual_data_path
 
 let pp_list = Pp.list pp
 
@@ -94,6 +107,8 @@ type t =
   ; highlights_html : string
   ; body_md : string
   ; body_html : string
+  ; manual_version : string
+  ; manual_data_path : string option
   }
   
 let all = %a

@@ -64,3 +64,16 @@ let loader ~read ~last_modified ?(not_cached = []) local_root path request =
                  ]
                 @ Dream.mime_lookup path)
               asset)
+
+let loader_of_mirage_store ?not_cached (module Store : Mirage_kv.RO) =
+  let open Lwt.Syntax in
+  let store = Store.connect () in
+  let read _root path =
+    let* store in
+    Store.get store (Mirage_kv.Key.v path)
+  in
+  let last_modified _root path =
+    let* store in
+    Store.last_modified store (Mirage_kv.Key.v path)
+  in
+  Static.loader ?not_cached ~read ~last_modified

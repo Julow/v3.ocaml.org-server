@@ -52,7 +52,7 @@ Learn_layout.render
       <div class="p-8">
         <h2 class="font-bold mb-2">Language Manual</h2>
         <div class="font-medium mb-4 opacity-80">Read the language manual to get a deeper understanding!</div>
-        <a href="<%s Url.manual %>">
+        <a href="<%s Url.manual_latest %>">
           <button
             class="bg-black font-semibold h-12 px-5 rounded-md bg-opacity-10 hover:bg-opacity-20 transition-colors"
           >

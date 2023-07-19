@@ -337,6 +337,8 @@ module Release : sig
     highlights_html : string;
     body_md : string;
     body_html : string;
+    manual_version : string;
+    manual_path : string option;
   }
 
   val all : t list

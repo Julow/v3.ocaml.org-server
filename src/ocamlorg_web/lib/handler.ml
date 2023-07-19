@@ -571,3 +571,14 @@ let package_doc t kind req =
             (Ocamlorg_frontend.package_documentation ~documentation_status
                ~path:doc.module_path ~title ~toc ~maptoc ~content:doc.content
                package_meta))
+
+(* let manual_loader = *)
+
+let manual req =
+  let version = Dream.param req "id" in
+  match Ood.Release.get_by_version version with
+  | Some release -> (
+      match release.manual_data_path with
+      | Some p -> Dream.static ~loader:manual_loader p req
+      | None -> not_found req)
+  | None -> not_found req

@@ -16,18 +16,10 @@ let success_story v = "/success-stories/" ^ v
 let industrial_users = "/industrial-users"
 let academic_users = "/academic-users"
 let about = "/about"
-
-let manual_with_version v =
-  let minor = String.sub v 0 4 in
-  "https://v2.ocaml.org/releases/" ^ minor ^ "/htmlman/index.html"
-
-let manual = "https://v2.ocaml.org/releases/latest/manual.html"
-
-let api_with_version v =
-  let minor = String.sub v 0 4 in
-  "https://v2.ocaml.org/releases/" ^ minor ^ "/api/index.html"
-
-let api = "https://v2.ocaml.org/api/index.html"
+let manual v = "/manual/" ^ v
+let api v = "/manual/api/" ^ v
+let manual_latest = manual "latest"
+let api_latest = api "latest"
 let books = "/books"
 let releases = "/releases"
 let release v = "/releases/" ^ v

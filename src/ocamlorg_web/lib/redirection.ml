@@ -569,76 +569,14 @@ let from_v2 =
     ("/releases/index.html", Url.releases);
     ("/releases", Url.releases);
     ("/releases/latest/index.html", Url.release "4.14.0");
-    ("/releases/latest/manual.html", Url.manual_with_version "4.14.0");
+    ("/releases/latest/manual.html", Url.manual_latest);
   ]
 
-let redirect_p pattern =
-  let handler req =
-    let target = Dream.target req in
-    Dream.redirect req ("https://v2.ocaml.org" ^ target)
-  in
-  Dream.get pattern handler
+let redir_middlewares = [ Dream_encoding.compress ]
 
-let fwd_v2 origin =
-  Dream.get origin (fun req ->
-      Dream.redirect req ("https://v2.ocaml.org" ^ origin))
-
-let manual =
-  [
-    redirect_p "/api/**";
-    fwd_v2 "/api";
-    redirect_p "/manual/**";
-    fwd_v2 "/manual";
-    redirect_p "/releases/3.12/htmlman/**";
-    fwd_v2 "/releases/3.12/htmlman";
-    redirect_p "/releases/4.00/htmlman/**";
-    fwd_v2 "/releases/4.00/htmlman";
-    redirect_p "/releases/4.01/htmlman/**";
-    fwd_v2 "/releases/4.01/htmlman";
-    redirect_p "/releases/4.02/htmlman/**";
-    fwd_v2 "/releases/4.02/htmlman";
-    redirect_p "/releases/4.03/htmlman/**";
-    fwd_v2 "/releases/4.03/htmlman";
-    redirect_p "/releases/4.04/htmlman/**";
-    fwd_v2 "/releases/4.04/htmlman";
-    redirect_p "/releases/4.05/htmlman/**";
-    fwd_v2 "/releases/4.05/htmlman";
-    redirect_p "/releases/4.06/htmlman/**";
-    fwd_v2 "/releases/4.06/htmlman";
-    redirect_p "/releases/4.07/htmlman/**";
-    fwd_v2 "/releases/4.07/htmlman";
-    redirect_p "/releases/4.08/htmlman/**";
-    fwd_v2 "/releases/4.08/htmlman";
-    redirect_p "/releases/4.09/htmlman/**";
-    fwd_v2 "/releases/4.09/htmlman";
-    redirect_p "/releases/4.10/htmlman/**";
-    fwd_v2 "/releases/4.10/htmlman";
-    redirect_p "/releases/4.11/htmlman/**";
-    fwd_v2 "/releases/4.11/htmlman";
-    redirect_p "/releases/4.12/api/**";
-    fwd_v2 "/releases/4.12/api";
-    redirect_p "/releases/4.12/htmlman/**";
-    fwd_v2 "/releases/4.12/htmlman";
-    redirect_p "/releases/4.12/manual/**";
-    fwd_v2 "/releases/4.12/manual";
-    redirect_p "/releases/4.13/api/**";
-    fwd_v2 "/releases/4.13/api";
-    redirect_p "/releases/4.13/htmlman/**";
-    fwd_v2 "/releases/4.13/htmlman";
-    redirect_p "/releases/4.13/manual/**";
-    fwd_v2 "/releases/4.13/manual";
-    redirect_p "/releases/4.14/api/**";
-    fwd_v2 "/releases/4.14/api";
-    redirect_p "/releases/4.14/htmlman/**";
-    fwd_v2 "/releases/4.14/htmlman";
-    redirect_p "/releases/4.14/manual/**";
-    fwd_v2 "/releases/4.14/manual";
-  ]
-
-let make ?(permanent = false) t =
+let v2_redirect ?(permanent = false) t =
   let status = if permanent then `Moved_Permanently else `See_Other in
-  Dream.scope ""
-    [ Dream_encoding.compress ]
+  Dream.scope "" redir_middlewares
     (List.filter_map
        (fun (origin, new_) ->
          if origin = new_ then None
@@ -646,11 +584,59 @@ let make ?(permanent = false) t =
            Some (Dream.get origin (fun req -> Dream.redirect ~status req new_)))
        t)
 
+let make ?(status = `Moved_Permanently) src dst =
+  Dream.get src (fun req -> Dream.redirect ~status req dst)
+
+(** Create redirect routes for every paths under a prefix. [f req path] is
+    called to obtain the target URL, [path] is [None] for requests to the bare
+    prefix. *)
+let redirect_deep ?(status = `Moved_Permanently) prefix middlewares f =
+  let redir req path = Dream.redirect ~status req (f req path) in
+  Dream.scope prefix middlewares
+    [
+      Dream.get "" (fun req -> redir req None);
+      Dream.get "/**" (fun req ->
+          (* Even thought this is nested under [Dream.scope] and the pattern is
+             just [/**], [Dream.target] returns the full unscoped path. Use the
+             deprecated [Dream.path] instead. *)
+          let path = String.concat "/" (Dream.path req [@ocaml.warning "-3"]) in
+          redir req (Some path));
+    ]
+
+(** The manual was moved from within [/releases] to [/manual]. The man was
+    already served on [/manual] on V2 and needs to be redirected to
+    [/manual/latest]. *)
+let manual_move =
+  let redirect_from_release release_suffix mk_url =
+    (* Redirect from [/releases] to [/manual]. *)
+    redirect_deep ("/releases/:version/" ^ release_suffix) redir_middlewares
+      (fun req path ->
+        let version = Dream.param req "version" in
+        let new_suffix = match path with Some p -> p | None -> "index.html" in
+        mk_url (version ^ "/" ^ new_suffix))
+    (* and redirect_to_latest = *)
+    (*   (1* Redirect plain [/manual] to [/manual/latest]. Every paths must be *)
+    (*      supported because the manual used to be served on [/manual]. Hopefully *)
+    (*      can't create a loop. *1) *)
+    (*   redirect_deep "/manual" redir_middlewares (fun _ path -> *)
+    (*       let suffix = match path with Some p -> "/" ^ p | None -> "" in *)
+    (*       "/manual/latest" ^ suffix) *)
+  in
+  [
+    redirect_from_release "htmlman" Url.manual;
+    redirect_from_release "manual" Url.manual;
+    redirect_from_release "api" Url.api;
+    (* Old "latest" url. *)
+    make "/releases/latest/manual.html" Url.manual_latest
+    (* redirect_to_latest; *);
+  ]
+
 let t =
   Dream.scope "" []
-    [
-      make from_v2;
-      make v2_assets;
-      Dream.scope "" [ Dream_encoding.compress ] manual;
-      make ~permanent:true [ ("/opportunities", "/jobs") ];
-    ]
+    ([
+       (* v2_redirect from_v2; *)
+       (* v2_redirect v2_assets; *)
+       (* Dream.scope "" redir_middlewares manual_v2; *)
+       make "/opportunities" "/jobs";
+     ]
+    @ manual_move)

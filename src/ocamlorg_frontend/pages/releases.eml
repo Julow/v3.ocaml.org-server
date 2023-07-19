@@ -71,8 +71,8 @@ Layout.render
                                 <a href="<%s Url.package_with_version "ocaml" release.version %>" class="text-primary-600 font-medium block">
                                     OCaml Package
                                 </a>
-                                <a href="<%s Url.manual_with_version release.version %>" class="text-primary-600 font-medium block">
-                                    Manual
+                                <a href="<%s Url.manual release.manual_version %>" class="text-primary-600 font-medium block">
+                                    <%s Option.value ~default:"None" release.manual_path %>
                                 </a>
                             </td>
                         </tr>

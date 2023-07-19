@@ -1,27 +1,11 @@
 module Url = Ocamlorg_frontend.Url
 
 let asset_loader =
-  let open Lwt.Syntax in
-  let store = Asset.connect () in
-  Static.loader
-    ~read:(fun _root path ->
-      let* store in
-      Asset.get store (Mirage_kv.Key.v path))
-    ~last_modified:(fun _root path ->
-      let* store in
-      Asset.last_modified store (Mirage_kv.Key.v path))
+  Static.loader_of_mirage_store
+    (module Asset)
     ~not_cached:[ "css/main.css"; "/css/main.css"; "robots.txt"; "/robots.txt" ]
 
-let media_loader =
-  let open Lwt.Syntax in
-  let store = Media.connect () in
-  Static.loader
-    ~read:(fun _root path ->
-      let* store in
-      Media.get store (Mirage_kv.Key.v path))
-    ~last_modified:(fun _root path ->
-      let* store in
-      Media.last_modified store (Mirage_kv.Key.v path))
+let media_loader = Static.loader_of_mirage_store (module Media)
 
 let page_routes =
   Dream.scope ""
@@ -52,6 +36,11 @@ let page_routes =
       Dream.get (Url.tutorial ":id") Handler.tutorial;
       Dream.get Url.playground Handler.playground;
     ]
+
+let manual_routes =
+  Dream.scope (Url.manual ":id")
+    [ Dream_dashboard.analytics (); Dream_encoding.compress ]
+    [ Dream.get "" Handler.manual ]
 
 let package_route t =
   Dream.scope ""
@@ -92,6 +81,7 @@ let router t =
       page_routes;
       package_route t;
       graphql_route t;
+      manual_routes;
       Dream.scope ""
         [ Dream_encoding.compress ]
         [ Dream.get "/media/**" (Dream.static ~loader:media_loader "") ];
