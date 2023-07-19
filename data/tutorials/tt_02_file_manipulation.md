@@ -67,142 +67,71 @@ can start exploring how to read from and write to files using these channels.
 
 ## Writing to a File
 
-Here's a complete example of writing to a file in OCaml:
+Here's an example of writing to a file in OCaml:
 
 ```ocaml
-let write_to_file () =
-  (* Step 1: Open the File *)
-  let oc = Out_channel.open_text "file.txt" in
-  (* Step 2: Write to the Channel *)
-  Out_channel.output_string oc "Hello, World!\n";
-  (* Step 3: Flush the Channel *)
-  Out_channel.flush oc;
-  (* Step 4: Close the Channel *)
-  Out_channel.close oc
+let () =
+  (* Step 1: Open the file for writing *)
+  Out_channel.with_open_text "file.txt" (fun oc ->
+    (* Step 2: Write to the channel *)
+    Out_channel.output_string oc "Hello, World!\n"
+  )
 ```
 
-Note that in practice, this is a shorter way to write a string to a file:
+The first step is to open the file for writing with `Out_channel.with_open_text`:
 
 ```ocaml
-let () = Out_channel.with_open_text "file.txt" (fun oc ->
-  Out_channel.output_string oc "Hello, World!\n")
+  Out_channel.with_open_text "file.txt" (fun oc ->
+    ...
+  )
 ```
 
-Let's examine each step one by one.
+We pass an unamed function to it, which will receive an `out_channel` that we
+can write to. We do not need to worry about closing the channel when we are
+done as `Out_channel.with_open_text` will take care of it as soon as our
+function returns.
+The file `"file.txt"` is either created, if it doesn't exist, or truncated if
+it does.
 
-**Step 1: Open the File**
+Now that we have an `out_channel` in the variable `oc` that we can write to:
 
 ```ocaml
-let oc = Out_channel.open_text "file.txt" 
+    Out_channel.output_string oc "Hello, World!\n"
 ```
-
-The function `Out_channel.open_text` is used to create an `out_channel` for
-writing to the file. The file is open in `text` mode, as opposed to `binary`
-mode. To open a file in `binary` mode, you can use the `Out_channel.open_bin`
-function.
-
-Here, the file `"file.txt"` is either created, if it doesn't exist, or opened and
-truncated if it does. The returned `out_channel` is stored in the variable `oc`.
-
-**Step 2: Write to the Channel**
-
-```ocaml
-Out_channel.output_string oc "Hello, World!\n"
-```
-
-Next, we write to the `out_channel` using the function
-`Out_channel.output_string`. This function takes two parameters: the
-`out_channel` to write to and the string to write.
-
-In this case, the string `"Hello, World!\n"` is written to the file through the
-`oc` output channel.
-
-**Step 3: Flush the Channel**
-
-```ocaml
-Out_channel.flush oc
-```
-
-To make sure that the data we've written to the `out_channel` is immediately
-sent to the file, we flush the channel using `Out_channel.flush`. This function
-takes the `out_channel` as a parameter and ensures that all buffered data is
-written to the file.
-
-Flushing the channel isn't strictly necessary in this case, since the channel is automatically 
-flushed on closing. Internally, a channel is a buffer; it keeps its data in
-memory and writes to the disk when it is full. Flushing is usually necessary
-when multiple processes or threads access the channel in parallel.
-
-**Step 4: Close the Channel**
-
-```ocaml
-Out_channel.close oc
-```
-
-Finally, after we're done writing to the file, we close the `out_channel` using
-`Out_channel.close`. This function takes the `out_channel` as a parameter,
-flushes any remaining buffered data to the file, and then closes the channel.
-Closing the channel when you're done with it is crucial to free up system
-resources.
 
 ## Reading from a File
 
-Here's a complete example of reading from a file in OCaml:
+Here's an example of reading from a file in OCaml:
 
 ```ocaml
-let read_from_file () =
-  (* Step 1: Open the File *)
-  let ic = In_channel.open_text "file.txt" in
-  (* Step 2: Read from the Channel *)
-  let content = In_channel.input_all ic in
-  (* Step 3: Close the Channel *)
-  In_channel.close ic;
-  content
+let content =
+  (* Step 1: Open the file for reading *)
+  In_channel.with_open_text "file.txt" (fun ic ->
+    (* Step 2: Read from the channel *)
+    In_channel.input_all ic
+  )
 ```
 
-Note that in practice, this is a shorter way to read all text content from a
-file:
+The first step is to open the file for reading with `In_channel.with_open_text`:
 
 ```ocaml
-let content = In_channel.with_open_text "file.txt" In_channel.input_all
+  In_channel.with_open_text "file.txt" (fun ic ->
+    ...
+  )
 ```
 
-Let's examine each step one by one.
-
-
-**Step 1: Open the File**
+Just like when writing, we pass an unamed function to it, allowing it to
+automatically close the channel when we are done reading.
+The `in_channel` in the variable `ic` can be read from:
 
 ```ocaml
-let ic = In_channel.open_text "file.txt"
+    In_channel.input_all ic
 ```
 
-The function`In_channel.open_text` is used to create an `in_channel` for
-reading.
-
-Here, the file `"file.txt"` is opened for reading and the returned `in_channel`
-is stored in the variable `ic`.
-
-**Step 2: Read from the Channel**
-
-```ocaml
-let content = In_channel.input_all ic
-```
-
-Next, we read from the `in_channel` using the function `In_channel.input_all`.
-This function takes the `in_channel` as a parameter and reads the entire content
-of the channel. Then it stores the read content in the variable `content`.
-
-**Step 3: Close the Channel**
-
-
-```ocaml
-In_channel.close ic
-```
-
-After we're done reading from the file, we close the `in_channel` using
-`In_channel.close`. This function takes the `in_channel` as a parameter and
-closes it. Similar to the `out_channel`, closing the channel is important for
-freeing up system resources.
+The `In_channel.input_all` function reads from the channel until it reaches the
+end and returns a `string`.
+In this case, it reads the content of the whole file because we haven't read
+from the same channel before.
 
 ## Filesystem Operations
 
