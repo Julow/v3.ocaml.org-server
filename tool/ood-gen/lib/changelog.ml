@@ -11,12 +11,17 @@ type metadata = {
   of_yaml,
     stable_record ~version:t ~remove:[ changelog; description ]
       ~modify:[ authors ]
-      ~add:[ slug; changelog_html; body_html; body; date ]]
+      ~add:[ slug; changelog_html; body_html; body; date; project_name; version ]]
 
 let of_metadata m = metadata_to_t m ~modify_authors:(Option.value ~default:[])
 
-let re_date_slug =
+let re_slug =
   let open Re in
+  let re_project_name =
+    let w = rep1 alpha in
+    seq [ w; rep (seq [ char '-'; w ]) ]
+  in
+  let re_version_string = seq [ digit; rep1 any ] in
   compile
     (seq
        [
@@ -30,19 +35,24 @@ let re_date_slug =
              group (rep1 digit);
            ];
          char '-';
+         opt
+           (seq
+              [ group re_project_name; set "-."; group re_version_string; eos ]);
        ])
 
-let parse_date_from_slug s =
-  match Re.exec_opt re_date_slug s with
+let parse_slug s =
+  match Re.exec_opt re_slug s with
   | None -> None
   | Some g ->
       let int n = Re.Group.get g n |> int_of_string in
       let year = int 1 in
       let month = int 2 in
       let day = int 3 in
-      Some (Printf.sprintf "%04d-%02d-%02d" year month day)
+      let version = Re.Group.get_opt g 5 in
+      Some (Printf.sprintf "%04d-%02d-%02d" year month day, version)
 
 let decode (fname, (head, body)) =
+  let project_name = Filename.basename (Filename.dirname fname) in
   let slug = Filename.basename (Filename.remove_extension fname) in
   let metadata =
     metadata_of_yaml head |> Result.map_error (Utils.where fname)
@@ -64,15 +74,16 @@ let decode (fname, (head, body)) =
               |> Hilite.Md.transform
               |> Cmarkit_html.of_doc ~safe:false)
       in
-      let date =
-        match parse_date_from_slug slug with
+      let date, version =
+        match parse_slug slug with
         | Some x -> x
         | None ->
             failwith
-              "date is not present in metadata and could not be parsed from \
-               slug"
+              ("date is not present in metadata and could not be parsed from \
+                slug: " ^ slug)
       in
-      of_metadata ~slug ~changelog_html ~body ~body_html ~date metadata)
+      of_metadata ~slug ~changelog_html ~body ~body_html ~date ~project_name
+        ~version metadata)
     metadata
 
 let all () =

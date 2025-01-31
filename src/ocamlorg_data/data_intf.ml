@@ -129,6 +129,8 @@ module Changelog = struct
     body_html : string;
     body : string;
     authors : string list;
+    project_name : string;
+    version : string option;
   }
   [@@deriving of_yaml, show]
 end
