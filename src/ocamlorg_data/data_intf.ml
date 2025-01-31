@@ -130,7 +130,7 @@ module Changelog = struct
     body : string;
     authors : string list;
     project_name : string;
-    version : string option;
+    versions : string list;
   }
   [@@deriving of_yaml, show]
 end

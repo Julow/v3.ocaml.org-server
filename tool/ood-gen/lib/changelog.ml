@@ -26,14 +26,17 @@ type metadata = {
   authors : string list option;
   description : string option;
   changelog : string option;
+  versions : string list option;
 }
 [@@deriving
   of_yaml,
-    stable_record ~version:t ~remove:[ changelog; description ]
-      ~modify:[ authors ]
-      ~add:[ slug; changelog_html; body_html; body; date; project_name; version ]]
+  stable_record ~version:t ~remove:[ changelog; description ]
+    ~modify:[ authors; versions ]
+    ~add:[ slug; changelog_html; body_html; body; date; project_name ]]
 
-let of_metadata m = metadata_to_t m ~modify_authors:(Option.value ~default:[])
+let of_metadata m =
+  metadata_to_t m ~modify_authors:(Option.value ~default:[])
+    ~modify_versions:(Option.value ~default:[])
 
 let re_slug =
   let open Re in
@@ -102,8 +105,13 @@ let decode (fname, (head, body)) =
               ("date is not present in metadata and could not be parsed from \
                 slug: " ^ slug)
       in
+      let metadata =
+        match (metadata.versions, version) with
+        | None, Some v -> { metadata with versions = Some [ v ] }
+        | _ -> metadata
+      in
       of_metadata ~slug ~changelog_html ~body ~body_html ~date ~project_name
-        ~version metadata)
+        metadata)
     metadata
 
 let all () =
@@ -158,9 +166,9 @@ module Scraper = struct
   let group_releases_by_project all =
     List.fold_left
       (fun acc t ->
-        match t.version with
-        | Some version -> SMap.add_to_list t.project_name version acc
-        | None -> acc)
+        List.fold_left
+          (fun acc v -> SMap.add_to_list t.project_name v acc)
+          acc t.versions)
       SMap.empty all
 
   let check_if_uptodate project known_versions =
@@ -185,6 +193,5 @@ module Scraper = struct
       changelog entry is missing. *)
   let scrape () =
     all () |> group_releases_by_project |> SMap.iter check_if_uptodate;
-    if !warning_count > 0 then
-      exit 1
+    if !warning_count > 0 then exit 1
 end
