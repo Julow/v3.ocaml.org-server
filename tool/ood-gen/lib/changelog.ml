@@ -30,9 +30,9 @@ type metadata = {
 }
 [@@deriving
   of_yaml,
-  stable_record ~version:t ~remove:[ changelog; description ]
-    ~modify:[ authors; versions ]
-    ~add:[ slug; changelog_html; body_html; body; date; project_name ]]
+    stable_record ~version:t ~remove:[ changelog; description ]
+      ~modify:[ authors; versions ]
+      ~add:[ slug; changelog_html; body_html; body; date; project_name ]]
 
 let of_metadata m =
   metadata_to_t m ~modify_authors:(Option.value ~default:[])
